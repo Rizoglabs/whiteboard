@@ -17,9 +17,9 @@ test.describe('z-order', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await expectShapeCount(page, 0);
-    await createRect(page, 0, 0, 40, 40); // a
-    await createRect(page, 60, 0, 100, 40); // b
-    await createRect(page, 120, 0, 160, 40); // c
+    await createRect(page, 320, 0, 360, 40); // a
+    await createRect(page, 380, 0, 420, 40); // b
+    await createRect(page, 440, 0, 480, 40); // c
     await waitSaved(page);
     expect(await orderOf(page)).toHaveLength(3);
   });
@@ -27,7 +27,7 @@ test.describe('z-order', () => {
   test('bring forward / send backward via panel buttons', async ({ page }) => {
     const before = await orderOf(page);
     // Select the backmost shape (a) by clicking it.
-    const p = await worldToScreen(page, 20, 20);
+    const p = await worldToScreen(page, 340, 20);
     await page.mouse.click(p.x, p.y);
     await page.getByRole('button', { name: 'Bring forward (Ctrl+])' }).click();
     await waitSaved(page);
@@ -41,7 +41,7 @@ test.describe('z-order', () => {
 
   test('bring to front / send to back', async ({ page }) => {
     const before = await orderOf(page);
-    const p = await worldToScreen(page, 20, 20);
+    const p = await worldToScreen(page, 340, 20);
     await page.mouse.click(p.x, p.y);
     await page.getByRole('button', { name: 'Bring to front' }).click();
     await waitSaved(page);
@@ -54,7 +54,7 @@ test.describe('z-order', () => {
 
   test('keyboard Ctrl+] reorders the selection', async ({ page }) => {
     const before = await orderOf(page);
-    const p = await worldToScreen(page, 80, 20);
+    const p = await worldToScreen(page, 400, 20); // select b
     await page.mouse.click(p.x, p.y); // select b
     await page.keyboard.press('ControlOrMeta+]');
     await waitSaved(page);

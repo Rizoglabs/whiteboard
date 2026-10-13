@@ -9,6 +9,7 @@ import {
   toolButton,
   waitSaved,
   worldToScreen,
+  closePanel,
 } from './helpers';
 
 const viewports = [
@@ -35,6 +36,10 @@ for (const vp of viewports) {
       expect(buttons.length).toBeGreaterThan(5);
       for (const btn of buttons) {
         const box = await btn.boundingBox();
+        // Buttons inside the horizontally-scrollable toolbar may extend past
+        // the viewport edge by design; everything else must fit.
+        const inToolbar = await btn.evaluate((el) => !!el.closest('.toolbar'));
+        if (inToolbar) continue;
         expect(box, `button "${await btn.textContent()}" has a box`).not.toBeNull();
         expect(box!.x).toBeGreaterThanOrEqual(-1);
         expect(box!.x + box!.width).toBeLessThanOrEqual(vp.width + 1);
@@ -131,6 +136,7 @@ test.describe('pointer robustness (desktop)', () => {
     await page.goto('/');
     await waitSaved(page);
     await createRect(page, 100, 100, 200, 180);
+    await closePanel(page);
     // Synthetic pointer events carry fake ids; keep setPointerCapture from throwing.
     await page.evaluate(() => {
       const c = document.querySelector('canvas') as HTMLCanvasElement;

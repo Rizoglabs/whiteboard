@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import {
   createRect,
   expectShapeCount,
+  openMenu,
   readShapes,
   toolButton,
   waitSaved,
@@ -30,6 +31,7 @@ test.describe('import / export', () => {
 
     // Export.
     const downloadPromise = page.waitForEvent('download');
+    await openMenu(page);
     await toolButton(page, 'JSON').click();
     const download = await downloadPromise;
     const tmp = await download.path();
@@ -80,6 +82,7 @@ test.describe('import / export', () => {
     await waitSaved(page);
 
     const pngPromise = page.waitForEvent('download');
+    await openMenu(page);
     await toolButton(page, 'PNG').click();
     const png = await pngPromise;
     expect(png.suggestedFilename()).toMatch(/\.png$/);
@@ -87,6 +90,7 @@ test.describe('import / export', () => {
     expect(fs.statSync(pngPath!).size).toBeGreaterThan(1000);
 
     const svgPromise = page.waitForEvent('download');
+    await openMenu(page);
     await toolButton(page, 'SVG').click();
     const svg = await svgPromise;
     expect(svg.suggestedFilename()).toMatch(/\.svg$/);
@@ -97,6 +101,7 @@ test.describe('import / export', () => {
 
   test('exporting an empty canvas reports the problem instead of downloading', async ({ page }) => {
     const downloadPromise = page.waitForEvent('download', { timeout: 3000 }).catch(() => null);
+    await openMenu(page);
     await toolButton(page, 'PNG').click();
     const download = await downloadPromise;
     expect(download).toBeNull();

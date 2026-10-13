@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
   canvasBox,
+  closePanel,
   expectSelectedCount,
   expectShapeCount,
   readShapes,
@@ -84,6 +85,7 @@ test.describe('new shape tools', () => {
     await page.mouse.move(r2.x, r2.y, { steps: 3 });
     await page.mouse.up();
     await expectShapeCount(page, 1);
+    await closePanel(page);
 
     await toolButton(page, 'Arrow').click();
     // Start 5 world units away from the rect corner (100,100) — within snap radius.

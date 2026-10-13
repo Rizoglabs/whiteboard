@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
   expectShapeCount,
+  openMenu,
   toolButton,
   waitSaved,
   worldToScreen,
@@ -22,7 +23,12 @@ test.describe('mobile layout', () => {
     expect(overflow.scrollW).toBeLessThanOrEqual(overflow.innerW);
 
     // All tool buttons reachable.
-    for (const name of ['Rectangle', 'Ellipse', 'Line', 'Arrow', 'Text', 'JSON', 'PNG', 'SVG']) {
+    for (const name of ['Rectangle', 'Ellipse', 'Line', 'Arrow', 'Text']) {
+      await expect(toolButton(page, name)).toBeVisible();
+    }
+    // Import/export live in the hamburger menu.
+    await openMenu(page);
+    for (const name of ['Import', 'JSON', 'PNG', 'SVG']) {
       await expect(toolButton(page, name)).toBeVisible();
     }
   });
@@ -72,12 +78,12 @@ test.describe('mobile layout', () => {
 test.describe('tablet landscape', () => {
   test.use({ viewport: { width: 1024, height: 768 } });
 
-  test('properties panel docks on the right', async ({ page }) => {
+  test('properties panel docks on the left (Excalidraw style)', async ({ page }) => {
     await page.goto('/');
     await expectShapeCount(page, 0);
     await toolButton(page, 'Rectangle').click();
-    const a = await worldToScreen(page, 100, 100);
-    const b = await worldToScreen(page, 200, 200);
+    const a = await worldToScreen(page, 400, 100);
+    const b = await worldToScreen(page, 500, 200);
     await page.mouse.move(a.x, a.y);
     await page.mouse.down();
     await page.mouse.move(b.x, b.y, { steps: 3 });
@@ -89,7 +95,8 @@ test.describe('tablet landscape', () => {
     const box = await panel.boundingBox();
     const viewport = page.viewportSize();
     expect(box).toBeTruthy();
-    expect(box!.x + box!.width).toBeLessThanOrEqual(viewport!.width);
-    expect(box!.x).toBeGreaterThan(viewport!.width * 0.5);
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x).toBeLessThan(viewport!.width * 0.5);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(viewport!.width * 0.5);
   });
 });

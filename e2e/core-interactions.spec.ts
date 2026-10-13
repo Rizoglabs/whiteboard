@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import {
   canvasBox,
+  closePanel,
   closeTo,
   createRect,
   expectSelectedCount,
@@ -33,6 +34,7 @@ test('create selects the new shape and persists its geometry', async ({ page }) 
 test('click selects a shape; click on empty space deselects', async ({ page }) => {
   await createRect(page, 100, 100, 200, 180);
   await createRect(page, 300, 300, 380, 360);
+  await closePanel(page);
   const a = await worldToScreen(page, 150, 140);
   await page.mouse.click(a.x, a.y);
   await expectSelectedCount(page, 1);
@@ -44,6 +46,7 @@ test('click selects a shape; click on empty space deselects', async ({ page }) =
 test('shift-click toggles multi-select', async ({ page }) => {
   await createRect(page, 100, 100, 200, 180);
   await createRect(page, 300, 300, 380, 360);
+  await closePanel(page);
   const a = await worldToScreen(page, 150, 140);
   await page.mouse.click(a.x, a.y);
   await expectSelectedCount(page, 1);
@@ -52,6 +55,7 @@ test('shift-click toggles multi-select', async ({ page }) => {
   await page.mouse.click(b.x, b.y);
   await page.keyboard.up('Shift');
   await expectSelectedCount(page, 2);
+  await closePanel(page); // panel re-opens on multi-select; clear it before the toggle-off click
   await page.keyboard.down('Shift');
   await page.mouse.click(a.x, a.y);
   await page.keyboard.up('Shift');
@@ -61,6 +65,7 @@ test('shift-click toggles multi-select', async ({ page }) => {
 test('marquee selects every intersecting shape', async ({ page }) => {
   await createRect(page, 100, 100, 160, 160);
   await createRect(page, 300, 300, 360, 360);
+  await closePanel(page);
   const p1 = await worldToScreen(page, 50, 50);
   const p2 = await worldToScreen(page, 400, 400);
   await page.mouse.move(p1.x, p1.y);
@@ -73,6 +78,7 @@ test('marquee selects every intersecting shape', async ({ page }) => {
 test('shift-marquee adds to the existing selection', async ({ page }) => {
   await createRect(page, 100, 100, 160, 160);
   await createRect(page, 300, 300, 360, 360);
+  await closePanel(page);
   const a = await worldToScreen(page, 130, 130);
   await page.mouse.click(a.x, a.y);
   await expectSelectedCount(page, 1);
@@ -89,6 +95,7 @@ test('shift-marquee adds to the existing selection', async ({ page }) => {
 
 test('drag moves the shape by the pointer delta', async ({ page }) => {
   await createRect(page, 100, 100, 200, 180);
+  await closePanel(page);
   const c = await worldToScreen(page, 150, 140);
   await page.mouse.move(c.x, c.y);
   await page.mouse.down();
@@ -159,13 +166,13 @@ test('undo/redo keyboard shortcuts work', async ({ page }) => {
 });
 
 test('toolbar zoom in/out/reset', async ({ page }) => {
-  await toolButton(page, '+').click();
+  await toolButton(page, 'Zoom in').click();
   await expectZoom(page, '125%');
-  await toolButton(page, '+').click();
+  await toolButton(page, 'Zoom in').click();
   await expectZoom(page, '156%');
-  await toolButton(page, '156%').click();
+  await toolButton(page, 'Reset zoom').click();
   await expectZoom(page, '100%');
-  await toolButton(page, '−').click();
+  await toolButton(page, 'Zoom out').click();
   await expectZoom(page, '80%');
 });
 
@@ -180,6 +187,7 @@ test('wheel zoom clamps to 10%..800%', async ({ page }) => {
 
 test('pan tool moves the camera', async ({ page }) => {
   await createRect(page, 100, 100, 200, 180);
+  await closePanel(page);
   const box = await canvasBox(page);
   await toolButton(page, 'Pan').click();
   const sx = box.x + box.width / 2;
@@ -205,6 +213,7 @@ test('pan tool moves the camera', async ({ page }) => {
 
 test('space+drag pans the camera', async ({ page }) => {
   await createRect(page, 100, 100, 200, 180);
+  await closePanel(page);
   const box = await canvasBox(page);
   const sx = box.x + 200;
   const sy = box.y + 200;
@@ -231,6 +240,7 @@ test('space+drag pans the camera', async ({ page }) => {
 
 test('middle-drag pans the camera', async ({ page }) => {
   await createRect(page, 100, 100, 200, 180);
+  await closePanel(page);
   const box = await canvasBox(page);
   const sx = box.x + 200;
   const sy = box.y + 200;

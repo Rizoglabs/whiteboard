@@ -21,6 +21,8 @@ import { exportToSvg } from '../io/svg';
 import { fitTextRect } from '../render/text';
 import { CanvasView } from './CanvasView';
 import { Toolbar } from './Toolbar';
+import { HamburgerMenu } from './HamburgerMenu';
+import { ZoomPill, HistoryPill } from './ControlPills';
 import { StatusBar } from './StatusBar';
 import { PropertiesPanel } from './PropertiesPanel';
 import { TextEditor } from './TextEditor';
@@ -333,24 +335,18 @@ export function App(): React.JSX.Element {
 
   return (
     <div className="app">
-      <Toolbar
-        tool={tool}
-        onTool={(t) => hooksRef.current?.setTool(t)}
-        canUndo={history.canUndo}
-        canRedo={history.canRedo}
-        onUndo={() => hooksRef.current?.undo()}
-        onRedo={() => hooksRef.current?.redo()}
-        canDelete={selection.length > 0}
-        onDelete={() => hooksRef.current?.deleteSelection()}
-        zoom={camera.zoom}
-        onZoomIn={() => zoomBy(1.25)}
-        onZoomOut={() => zoomBy(0.8)}
-        onZoomReset={resetView}
+      <HamburgerMenu
         onImportFile={(f) => void importFile(f)}
         onExportJson={exportJson}
         onExportPng={() => void exportPng()}
         onExportSvg={exportSvg}
         exporting={exporting}
+      />
+      <Toolbar
+        tool={tool}
+        onTool={(t) => hooksRef.current?.setTool(t)}
+        canDelete={selection.length > 0}
+        onDelete={() => hooksRef.current?.deleteSelection()}
       />
       <CanvasView
         doc={doc}
@@ -387,8 +383,8 @@ export function App(): React.JSX.Element {
         {ready && shapeCount === 0 && (
           <div className="empty-state" aria-hidden="true">
             <p className="empty-title">Kanvas kosong</p>
-            <p className="empty-hint">Pilih ▭ ⬯ ╱ → T di toolbar, lalu drag di kanvas untuk menggambar.</p>
-            <p className="empty-hint">Klik kanan-tahan? Tidak perlu — drag biasa cukup. Scroll untuk zoom.</p>
+            <p className="empty-hint">Pilih alat di toolbar atas, lalu drag di kanvas untuk menggambar.</p>
+            <p className="empty-hint">Scroll untuk zoom, spasi + drag untuk geser.</p>
           </div>
         )}
         {notice && (
@@ -400,6 +396,20 @@ export function App(): React.JSX.Element {
           </div>
         )}
       </CanvasView>
+      <div className="canvas-pills">
+        <ZoomPill
+          zoom={camera.zoom}
+          onZoomIn={() => zoomBy(1.25)}
+          onZoomOut={() => zoomBy(0.8)}
+          onZoomReset={resetView}
+        />
+        <HistoryPill
+          canUndo={history.canUndo}
+          canRedo={history.canRedo}
+          onUndo={() => hooksRef.current?.undo()}
+          onRedo={() => hooksRef.current?.redo()}
+        />
+      </div>
       <StatusBar
         shapeCount={shapeCount}
         selectionCount={selection.length}

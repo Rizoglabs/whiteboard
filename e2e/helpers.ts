@@ -102,6 +102,19 @@ export function toolButton(page: Page, name: string): Locator {
   return page.getByRole('button', { name, exact: true });
 }
 
+/** Open the top-left hamburger menu (import/export live there). */
+export async function openMenu(page: Page): Promise<void> {
+  await toolButton(page, 'Menu').click();
+}
+
+/** Close the floating properties panel (it can cover canvas points beneath it). */
+export async function closePanel(page: Page): Promise<void> {
+  const btn = page.getByRole('button', { name: 'Close panel', exact: true });
+  if ((await btn.count()) > 0) {
+    await btn.click();
+  }
+}
+
 /** Draw a rectangle with world-space corners (x1,y1)-(x2,y2). Leaves the shape selected. */
 export async function createRect(
   page: Page,

@@ -60,6 +60,7 @@ export function CanvasView(props: CanvasViewProps): React.JSX.Element {
         createPreview: c ? c.createPreview : null,
         marquee: c ? c.marquee : null,
         guides: c ? c.guides : null,
+        grid: false, // plain white canvas, Excalidraw style
       });
     });
   }, [doc, camera, selection, version, controllerRef]);
