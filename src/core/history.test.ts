@@ -16,6 +16,7 @@ function rectShape(id: string, x: number, y: number, w = 50, h = 40): RectangleS
     fill: '#fff',
     stroke: '#000',
     strokeWidth: 2,
+    opacity: 1,
   };
 }
 

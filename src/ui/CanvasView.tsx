@@ -16,12 +16,14 @@ interface CanvasViewProps {
   hooks: ControllerHooks;
   controllerRef: React.MutableRefObject<InteractionController | null>;
   onViewportSize: (w: number, h: number) => void;
+  children?: React.ReactNode;
 }
 
 export function CanvasView(props: CanvasViewProps): React.JSX.Element {
   const { doc, camera, selection, version, hooks, controllerRef, onViewportSize } = props;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef(0);
 
   // Create the interaction controller once.
   useEffect(() => {
@@ -30,29 +32,35 @@ export function CanvasView(props: CanvasViewProps): React.JSX.Element {
     const controller = new InteractionController(canvas, hooks);
     controllerRef.current = controller;
     return () => {
+      cancelAnimationFrame(rafRef.current);
       controller.destroy();
       controllerRef.current = null;
     };
   }, []);
 
-  // Redraw on any state change.
+  // Redraw on any state change, coalesced to one paint per animation frame
+  // so rapid pointermove bumps don't queue redundant full redraws.
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const w = canvas.width / dpr;
-    const h = canvas.height / dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const c = controllerRef.current;
-    renderScene(ctx, w, h, {
-      doc,
-      camera,
-      selection,
-      previewRects: c ? c.previewRects : new Map(),
-      createPreview: c ? c.createPreview : null,
-      marquee: c ? c.marquee : null,
+    cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const w = canvas.width / dpr;
+      const h = canvas.height / dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const c = controllerRef.current;
+      renderScene(ctx, w, h, {
+        doc,
+        camera,
+        selection,
+        previewShapes: c ? c.previewShapes : new Map(),
+        createPreview: c ? c.createPreview : null,
+        marquee: c ? c.marquee : null,
+        guides: c ? c.guides : null,
+      });
     });
   }, [doc, camera, selection, version, controllerRef]);
 
@@ -77,6 +85,7 @@ export function CanvasView(props: CanvasViewProps): React.JSX.Element {
   return (
     <div className="canvas-wrap" ref={containerRef}>
       <canvas ref={canvasRef} aria-label="Whiteboard canvas" />
+      {props.children}
     </div>
   );
 }

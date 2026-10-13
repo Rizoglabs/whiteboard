@@ -2,6 +2,7 @@
 // Stores a single document under a fixed key.
 
 import { emptyDocument, type WhiteboardDocument } from './scene';
+import { migrateDocument } from './migrate';
 
 const DB_NAME = 'whiteboard-db';
 const STORE_NAME = 'documents';
@@ -53,12 +54,6 @@ function tx<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequ
   );
 }
 
-function isValidDocument(value: unknown): value is WhiteboardDocument {
-  if (typeof value !== 'object' || value === null) return false;
-  const v = value as Record<string, unknown>;
-  return v['version'] === 1 && typeof v['shapes'] === 'object' && Array.isArray(v['order']);
-}
-
 export async function saveDocument(doc: WhiteboardDocument): Promise<void> {
   // Structured clone via IndexedDB keeps plain data; strip nothing.
   await tx('readwrite', (store) => store.put(doc, DOC_KEY));
@@ -67,8 +62,8 @@ export async function saveDocument(doc: WhiteboardDocument): Promise<void> {
 export async function loadDocument(): Promise<WhiteboardDocument | null> {
   const value = await tx('readonly', (store) => store.get(DOC_KEY));
   if (value == null) return null;
-  if (!isValidDocument(value)) return null;
-  return value;
+  // Validates and migrates older document versions; null when corrupt.
+  return migrateDocument(value);
 }
 
 export async function clearDocument(): Promise<void> {

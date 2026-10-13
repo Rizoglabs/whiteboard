@@ -11,6 +11,7 @@ function sampleDoc(): WhiteboardDocument {
     fill: '#fef3c7',
     stroke: '#b45309',
     strokeWidth: 2,
+    opacity: 1,
   };
   return addShape(emptyDocument(), shape);
 }
@@ -40,6 +41,7 @@ describe('persistence', () => {
       fill: '#fff',
       stroke: '#000',
       strokeWidth: 1,
+      opacity: 1,
     });
     await saveDocument(second);
     const loaded = await loadDocument();

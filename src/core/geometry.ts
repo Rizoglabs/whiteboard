@@ -135,3 +135,44 @@ export function resizeRect(r: Rect, handle: HandleId, p: Vec, minSize = MIN_SIZE
   }
   return { x, y, w, h };
 }
+
+// ---------------------------------------------------------------------------
+// Shape-specific hit testing
+// ---------------------------------------------------------------------------
+
+/** Point inside the ellipse inscribed in r (plus tolerance). */
+export function pointInEllipse(p: Vec, r: Rect, tolerance = 0): boolean {
+  const n = normalizeRect(r);
+  if (n.w <= 0 || n.h <= 0) return false;
+  const cx = n.x + n.w / 2;
+  const cy = n.y + n.h / 2;
+  const dx = (p.x - cx) / (n.w / 2 + tolerance);
+  const dy = (p.y - cy) / (n.h / 2 + tolerance);
+  return dx * dx + dy * dy <= 1;
+}
+
+/** Shortest distance from p to the segment a-b. */
+export function distToSegment(p: Vec, a: Vec, b: Vec): number {
+  const abx = b.x - a.x;
+  const aby = b.y - a.y;
+  const lenSq = abx * abx + aby * aby;
+  if (lenSq === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+  let t = ((p.x - a.x) * abx + (p.y - a.y) * aby) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x - (a.x + t * abx), p.y - (a.y + t * aby));
+}
+
+/** True when p is within tolerance of the segment a-b. */
+export function segmentHit(p: Vec, a: Vec, b: Vec, tolerance: number): boolean {
+  return distToSegment(p, a, b) <= tolerance;
+}
+
+/** Bounding box of two endpoints, padded so it is never degenerate. */
+export function endpointsRect(x1: number, y1: number, x2: number, y2: number, pad = 0): Rect {
+  return normalizeRect({
+    x: Math.min(x1, x2) - pad,
+    y: Math.min(y1, y2) - pad,
+    w: Math.abs(x2 - x1) + pad * 2,
+    h: Math.abs(y2 - y1) + pad * 2,
+  });
+}

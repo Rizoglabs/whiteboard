@@ -3,7 +3,14 @@
 
 import type { Rect } from './geometry';
 import type { Shape, WhiteboardDocument } from './scene';
-import { addShape, removeShapes, updateShapeRect } from './scene';
+import {
+  addShape,
+  addShapes,
+  removeShapes,
+  reorderShapes,
+  resizeShapeInDoc,
+  translateShapeInDoc,
+} from './scene';
 
 export interface DocAction {
   label: string;
@@ -45,12 +52,16 @@ export function moveShapesAction(moves: ShapeMove[]): DocAction {
     label: 'Move shapes',
     apply: (doc) => {
       let next = doc;
-      for (const m of moves) next = updateShapeRect(next, m.id, m.to);
+      for (const m of moves) {
+        next = translateShapeInDoc(next, m.id, m.to.x - m.from.x, m.to.y - m.from.y);
+      }
       return next;
     },
     revert: (doc) => {
       let next = doc;
-      for (const m of moves) next = updateShapeRect(next, m.id, m.from);
+      for (const m of moves) {
+        next = translateShapeInDoc(next, m.id, m.from.x - m.to.x, m.from.y - m.to.y);
+      }
       return next;
     },
   };
@@ -59,8 +70,72 @@ export function moveShapesAction(moves: ShapeMove[]): DocAction {
 export function resizeShapeAction(id: string, from: Rect, to: Rect): DocAction {
   return {
     label: 'Resize shape',
-    apply: (doc) => updateShapeRect(doc, id, to),
-    revert: (doc) => updateShapeRect(doc, id, from),
+    apply: (doc) => resizeShapeInDoc(doc, id, to),
+    revert: (doc) => resizeShapeInDoc(doc, id, from),
+  };
+}
+
+/** Add several shapes in one undoable step (e.g. paste). */
+export function addShapesAction(shapes: Shape[], label = 'Add shapes'): DocAction {
+  const ids = shapes.map((s) => s.id);
+  return {
+    label,
+    apply: (doc) => addShapes(doc, shapes),
+    revert: (doc) => removeShapes(doc, ids),
+  };
+}
+
+export interface ShapePatch {
+  id: string;
+  /** Full shape before the change (for undo). */
+  before: Shape;
+  /** Full shape after the change (for redo). */
+  after: Shape;
+}
+
+/** Property/text changes as one undoable step. */
+export function patchShapesAction(patches: ShapePatch[], label = 'Change properties'): DocAction {
+  return {
+    label,
+    apply: (doc) => {
+      let next = doc;
+      for (const p of patches) {
+        if (next.shapes[p.id]) {
+          next = { ...next, shapes: { ...next.shapes, [p.id]: p.after } };
+        }
+      }
+      return next;
+    },
+    revert: (doc) => {
+      let next = doc;
+      for (const p of patches) {
+        if (next.shapes[p.id]) {
+          next = { ...next, shapes: { ...next.shapes, [p.id]: p.before } };
+        }
+      }
+      return next;
+    },
+  };
+}
+
+/** Z-order change as one undoable step. */
+export function reorderShapesAction(beforeOrder: string[], afterOrder: string[]): DocAction {
+  return {
+    label: 'Reorder shapes',
+    apply: (doc) => reorderShapes(doc, afterOrder),
+    revert: (doc) => reorderShapes(doc, beforeOrder),
+  };
+}
+
+/** Whole-document replace (e.g. JSON import). Undo restores the previous document. */
+export function replaceDocumentAction(
+  before: WhiteboardDocument,
+  after: WhiteboardDocument,
+): DocAction {
+  return {
+    label: 'Import document',
+    apply: () => after,
+    revert: () => before,
   };
 }
 
