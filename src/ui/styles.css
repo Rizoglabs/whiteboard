@@ -1,0 +1,101 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: #1f2937;
+  overscroll-behavior: none;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  background: #ffffff;
+}
+
+/* Toolbar: wraps on narrow screens, 40px+ touch targets. */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: #f4f5f7;
+  border-bottom: 1px solid #d9dce1;
+  user-select: none;
+}
+
+.tool-btn {
+  min-height: 40px;
+  min-width: 44px;
+  padding: 6px 12px;
+  font-size: 14px;
+  color: #1f2937;
+  background: #ffffff;
+  border: 1px solid #c9ced6;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.tool-btn:hover:not(:disabled) {
+  background: #eef1f5;
+}
+
+.tool-btn[aria-pressed='true'] {
+  background: #dbeafe;
+  border-color: #2563eb;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.tool-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.toolbar .sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 4px 2px;
+  background: #c9ced6;
+}
+
+.canvas-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.statusbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  color: #5b6472;
+  background: #f4f5f7;
+  border-top: 1px solid #d9dce1;
+  user-select: none;
+}
+
+.statusbar .save-error {
+  color: #b91c1c;
+  font-weight: 600;
+}
