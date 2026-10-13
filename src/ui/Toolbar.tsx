@@ -19,12 +19,12 @@ interface ToolbarProps {
 
 const TOOLS: { id: Tool; name: string; key: string; Icon: () => React.JSX.Element }[] = [
   { id: 'select', name: 'Select', key: 'V', Icon: SelectIcon },
+  { id: 'pan', name: 'Pan', key: 'H', Icon: PanIcon },
   { id: 'rectangle', name: 'Rectangle', key: 'R', Icon: RectangleIcon },
   { id: 'ellipse', name: 'Ellipse', key: 'O', Icon: EllipseIcon },
   { id: 'line', name: 'Line', key: 'L', Icon: LineIcon },
   { id: 'arrow', name: 'Arrow', key: 'A', Icon: ArrowIcon },
   { id: 'text', name: 'Text', key: 'T', Icon: TextIcon },
-  { id: 'pan', name: 'Pan', key: 'H', Icon: PanIcon },
 ];
 
 export function Toolbar(props: ToolbarProps): React.JSX.Element {
