@@ -74,7 +74,9 @@ type DragMode =
   | { kind: 'move'; pointerId: number; startWorld: Vec; shapes: Shape[]; moved: boolean }
   | { kind: 'resize'; pointerId: number; shape: Shape; handle: HandleId; from: Rect }
   | { kind: 'marquee'; pointerId: number; start: Vec; current: Rect | null; additive: boolean }
-  | { kind: 'pan'; pointerId: number; lastX: number; lastY: number };
+  | { kind: 'pan'; pointerId: number; lastX: number; lastY: number }
+  /** Two-finger touch gesture: pinch to zoom, move both fingers to pan. */
+  | { kind: 'pinch'; ids: [number, number]; p1: Vec; p2: Vec };
 
 const MIN_CREATE_SIZE = 4; // world units
 const MIN_LINE_LENGTH = 4; // world units
@@ -114,6 +116,8 @@ export class InteractionController {
 
   private mode: DragMode = { kind: 'none' };
   private spaceDown = false;
+  /** Last known screen position of every active pointer (for pinch gestures). */
+  private pointerPos = new Map<number, Vec>();
   private disposed = false;
   private clipboard: Shape[] = [];
   private pasteOffset = 0;
@@ -166,14 +170,18 @@ export class InteractionController {
   private onPointerDown = (e: PointerEvent): void => {
     if (!this.hooks.isReady()) return;
     const active = this.mode;
+    if (active.kind === 'pinch') return; // third finger during pinch: ignore
     if (active.kind !== 'none' && e.pointerId !== active.pointerId) {
-      // A second concurrent pointer (e.g. multi-touch) must not hijack the active drag.
+      // A second concurrent touch pointer switches to pinch-to-zoom/pan
+      // instead of hijacking the active drag.
+      if (e.pointerType === 'touch') this.beginPinch(e, active.pointerId);
       return;
     }
     if (e.pointerType === 'mouse' && e.button === 2) return; // ignore right button
     e.preventDefault();
     const { hooks } = this;
     const screen = this.screenPos(e);
+    this.pointerPos.set(e.pointerId, screen);
     const cam = hooks.getCamera();
     const tool = hooks.getTool();
 
@@ -253,6 +261,42 @@ export class InteractionController {
     this.canvas.setPointerCapture(e.pointerId);
   };
 
+  /** Second touch finger went down mid-gesture: switch to pinch zoom/pan. */
+  private beginPinch(e: PointerEvent, firstId: number): void {
+    e.preventDefault();
+    const p2 = this.screenPos(e);
+    const p1 = this.pointerPos.get(firstId) ?? p2;
+    // Discard the interrupted single-pointer gesture — nothing is committed
+    // on pointerdown, so no shape or history entry is lost.
+    this.cancelTransient();
+    this.mode = { kind: 'pinch', ids: [firstId, e.pointerId], p1, p2 };
+    this.pointerPos.set(e.pointerId, p2);
+    this.canvas.setPointerCapture(e.pointerId);
+    this.updateCursor('grabbing');
+    this.hooks.onChange();
+  }
+
+  /** One pinch finger lifted: the finger still down continues as a pan. */
+  private endPinch(liftedId: number): void {
+    const mode = this.mode;
+    if (mode.kind !== 'pinch') return;
+    const remaining = mode.ids[0] === liftedId ? mode.ids[1] : mode.ids[0];
+    const pos = this.pointerPos.get(remaining);
+    this.pointerPos.delete(liftedId);
+    // Claim the mode first so the lostpointercapture from release is a no-op.
+    if (pos) {
+      this.mode = { kind: 'pan', pointerId: remaining, lastX: pos.x, lastY: pos.y };
+      this.updateCursor('grabbing');
+    } else {
+      this.mode = { kind: 'none' };
+      this.updateCursor();
+    }
+    if (this.canvas.hasPointerCapture(liftedId)) {
+      this.canvas.releasePointerCapture(liftedId);
+    }
+    this.hooks.onChange();
+  }
+
   private otherRects(excludeIds: readonly string[]): Rect[] {
     const exclude = new Set(excludeIds);
     const out: Rect[] = [];
@@ -265,9 +309,30 @@ export class InteractionController {
   private onPointerMove = (e: PointerEvent): void => {
     const { hooks } = this;
     const screen = this.screenPos(e);
+    this.pointerPos.set(e.pointerId, screen);
     const cam = hooks.getCamera();
     const world = screenToWorld(cam, screen);
     const mode = this.mode;
+
+    if (mode.kind === 'pinch') {
+      if (e.pointerId !== mode.ids[0] && e.pointerId !== mode.ids[1]) return;
+      const prev1 = mode.p1;
+      const prev2 = mode.p2;
+      if (e.pointerId === mode.ids[0]) mode.p1 = screen;
+      else mode.p2 = screen;
+      const prevDist = Math.hypot(prev1.x - prev2.x, prev1.y - prev2.y);
+      const newDist = Math.hypot(mode.p1.x - mode.p2.x, mode.p1.y - mode.p2.y);
+      const prevMid = { x: (prev1.x + prev2.x) / 2, y: (prev1.y + prev2.y) / 2 };
+      const newMid = { x: (mode.p1.x + mode.p2.x) / 2, y: (mode.p1.y + mode.p2.y) / 2 };
+      // Move both fingers together to pan; spread/pinch them to zoom.
+      let next = panBy(cam, newMid.x - prevMid.x, newMid.y - prevMid.y);
+      if (prevDist > 0 && newDist > 0) {
+        next = zoomAt(next, newMid, newDist / prevDist);
+      }
+      hooks.setCamera(next);
+      hooks.onChange();
+      return;
+    }
 
     switch (mode.kind) {
       case 'none': {
@@ -360,7 +425,13 @@ export class InteractionController {
   private onPointerUp = (e: PointerEvent): void => {
     const { hooks } = this;
     const mode = this.mode;
+    if (mode.kind === 'pinch') {
+      if (!mode.ids.includes(e.pointerId)) return;
+      this.endPinch(e.pointerId);
+      return;
+    }
     if (mode.kind !== 'none' && e.pointerId !== mode.pointerId) return;
+    this.pointerPos.delete(e.pointerId);
     // Claim the mode first so the lostpointercapture fired by releasePointerCapture is a no-op.
     this.mode = { kind: 'none' };
     if (this.canvas.hasPointerCapture(e.pointerId)) {
@@ -466,7 +537,13 @@ export class InteractionController {
   private onPointerCancel = (e: PointerEvent): void => {
     const { hooks } = this;
     const mode = this.mode;
+    if (mode.kind === 'pinch') {
+      if (!mode.ids.includes(e.pointerId)) return;
+      this.endPinch(e.pointerId);
+      return;
+    }
     if (mode.kind !== 'none' && e.pointerId !== mode.pointerId) return;
+    this.pointerPos.delete(e.pointerId);
     this.cancelTransient();
     if (this.canvas.hasPointerCapture(e.pointerId)) {
       this.canvas.releasePointerCapture(e.pointerId);
@@ -477,6 +554,12 @@ export class InteractionController {
 
   private onLostPointerCapture = (e: PointerEvent): void => {
     const mode = this.mode;
+    if (mode.kind === 'pinch') {
+      if (!mode.ids.includes(e.pointerId)) return;
+      // Capture was lost outside the normal up/cancel flow — drop the gesture safely.
+      this.endPinch(e.pointerId);
+      return;
+    }
     if (mode.kind === 'none' || e.pointerId !== mode.pointerId) return;
     // Capture was lost outside the normal up/cancel flow — drop the gesture safely.
     this.cancelTransient();
