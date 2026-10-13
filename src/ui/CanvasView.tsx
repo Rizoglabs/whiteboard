@@ -65,6 +65,11 @@ export function CanvasView(props: CanvasViewProps): React.JSX.Element {
   }, [doc, camera, selection, version, controllerRef]);
 
   // Track container size; canvas backing store follows devicePixelRatio.
+  // Resetting canvas.width/height always clears its bitmap, so only do it
+  // when the size actually changed — and schedule a redraw afterwards.
+  // (On mobile the viewport height changes when the browser chrome
+  // shows/hides; without the redraw the canvas stays blank until the next
+  // interaction.)
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -72,9 +77,14 @@ export function CanvasView(props: CanvasViewProps): React.JSX.Element {
     const resize = () => {
       const rect = container.getBoundingClientRect();
       const dpr = Math.min(2, window.devicePixelRatio || 1);
-      canvas.width = Math.max(1, Math.round(rect.width * dpr));
-      canvas.height = Math.max(1, Math.round(rect.height * dpr));
+      const w = Math.max(1, Math.round(rect.width * dpr));
+      const h = Math.max(1, Math.round(rect.height * dpr));
       onViewportSize(rect.width, rect.height);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+        hooks.onChange();
+      }
     };
     const ro = new ResizeObserver(resize);
     ro.observe(container);
