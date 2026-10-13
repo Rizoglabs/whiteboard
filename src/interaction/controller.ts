@@ -81,7 +81,7 @@ export class InteractionController {
     canvas.addEventListener('pointerdown', this.onPointerDown);
     canvas.addEventListener('pointermove', this.onPointerMove);
     canvas.addEventListener('pointerup', this.onPointerUp);
-    canvas.addEventListener('pointercancel', this.onPointerUp);
+    canvas.addEventListener('pointercancel', this.onPointerCancel);
     canvas.addEventListener('wheel', this.onWheel, { passive: false });
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
@@ -95,7 +95,7 @@ export class InteractionController {
     canvas.removeEventListener('pointerdown', this.onPointerDown);
     canvas.removeEventListener('pointermove', this.onPointerMove);
     canvas.removeEventListener('pointerup', this.onPointerUp);
-    canvas.removeEventListener('pointercancel', this.onPointerUp);
+    canvas.removeEventListener('pointercancel', this.onPointerCancel);
     canvas.removeEventListener('wheel', this.onWheel);
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
@@ -116,6 +116,11 @@ export class InteractionController {
   }
 
   private onPointerDown = (e: PointerEvent): void => {
+    const active = this.mode;
+    if (active.kind !== 'none' && e.pointerId !== active.pointerId) {
+      // A second concurrent pointer (e.g. multi-touch) must not hijack the active drag.
+      return;
+    }
     if (e.pointerType === 'mouse' && e.button === 2) return; // ignore right button
     e.preventDefault();
     const { hooks } = this;
@@ -247,6 +252,22 @@ export class InteractionController {
         return;
       }
     }
+  };
+
+  /**
+   * A cancelled gesture commits nothing: discard the transient drag state
+   * instead of treating it like a pointerup. Selection is left untouched.
+   */
+  private onPointerCancel = (e: PointerEvent): void => {
+    const { hooks } = this;
+    const mode = this.mode;
+    if (mode.kind !== 'none' && e.pointerId !== mode.pointerId) return;
+    if (this.canvas.hasPointerCapture(e.pointerId)) {
+      this.canvas.releasePointerCapture(e.pointerId);
+    }
+    this.cancelTransient();
+    this.updateCursor();
+    hooks.onChange();
   };
 
   private onPointerUp = (e: PointerEvent): void => {
